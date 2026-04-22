@@ -595,9 +595,7 @@ export default function App() {
                             </div>
                             <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>@{esc(r.ig)}</div>
                             <div style={{ fontSize: 10, color: C.mutedDim, marginTop: 1 }}>{esc(r.groupName)}</div>
-                            {r.type === "reels" && r.phone && (
-                              <div style={{ fontSize: 10, color: C.mutedDim, marginTop: 1 }}>{esc(r.phone)} · {esc(r.address)}</div>
-                            )}
+
                           </div>
                           {r.plan && <div style={{ fontSize: 9, color: C.muted, background: C.bgInput, padding: "4px 8px", borderRadius: 20, fontWeight: 700 }}>方案{r.plan}</div>}
                         </div>
