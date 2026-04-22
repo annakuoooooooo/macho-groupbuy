@@ -199,6 +199,9 @@ export default function App() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [exportUnlocked, setExportUnlocked] = useState(false);
+  const [pwInput, setPwInput] = useState("");
+  const [pwError, setPwError] = useState(false);
 
   const exportExcel = () => {
     // Build CSV with BOM for Excel compatibility
@@ -496,22 +499,52 @@ export default function App() {
               <p style={{ textAlign: "center", color: C.muted, fontSize: 13, marginTop: 40 }}>載入中…</p>
             ) : (
               <>
-                {/* Export button */}
-                <button onClick={exportExcel} style={{
-                  width: "100%", padding: "14px", marginBottom: 16,
-                  borderRadius: 12, border: `1.5px solid ${C.lime}`,
-                  background: "rgba(216,243,130,0.08)",
-                  color: C.lime, fontFamily: font, fontSize: 13, fontWeight: 900,
-                  letterSpacing: "0.06em", cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="7 10 12 15 17 10"/>
-                    <line x1="12" y1="15" x2="12" y2="3"/>
-                  </svg>
-                  匯出 Excel 名單
-                </button>
+                {/* Export button — password protected */}
+                {!exportUnlocked ? (
+                  <div style={{ marginBottom: 16, background: C.bgCard, borderRadius: 12, border: `1px solid ${C.border}`, overflow: "hidden" }}>
+                    <div style={{ padding: "12px 14px 10px", fontSize: 11, color: C.muted, fontWeight: 800, letterSpacing: "0.1em" }}>匯出名單（需要密碼）</div>
+                    <div style={{ display: "flex", gap: 8, padding: "0 14px 14px" }}>
+                      <input
+                        type="password"
+                        placeholder="輸入密碼"
+                        value={pwInput}
+                        onChange={e => { setPwInput(e.target.value); setPwError(false); }}
+                        onKeyDown={e => {
+                          if (e.key === "Enter") {
+                            if (pwInput === "annakuooo") { setExportUnlocked(true); setPwError(false); }
+                            else { setPwError(true); }
+                          }
+                        }}
+                        style={{ ...inputSt, flex: 1, marginBottom: 0, borderColor: pwError ? "#ff6666" : "#5A4EC8" }}
+                      />
+                      <button onClick={() => {
+                        if (pwInput === "annakuooo") { setExportUnlocked(true); setPwError(false); }
+                        else { setPwError(true); }
+                      }} style={{
+                        padding: "0 16px", borderRadius: 10, border: "none",
+                        background: C.lime, color: C.bgDeep,
+                        fontFamily: font, fontSize: 12, fontWeight: 900, cursor: "pointer",
+                      }}>確認</button>
+                    </div>
+                    {pwError && <div style={{ padding: "0 14px 12px", fontSize: 11, color: "#ff8888", fontWeight: 700 }}>密碼錯誤</div>}
+                  </div>
+                ) : (
+                  <button onClick={exportExcel} style={{
+                    width: "100%", padding: "14px", marginBottom: 16,
+                    borderRadius: 12, border: `1.5px solid ${C.lime}`,
+                    background: "rgba(216,243,130,0.08)",
+                    color: C.lime, fontFamily: font, fontSize: 13, fontWeight: 900,
+                    letterSpacing: "0.06em", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    匯出 Excel 名單
+                  </button>
+                )}
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
                   {[
