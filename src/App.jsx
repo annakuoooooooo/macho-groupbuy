@@ -233,6 +233,35 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
+  const exportReels = () => {
+    const planName = { "1": "From Halla 肉泥", "2": "漢方潔牙棒", "3": "RESPET 口腔系列", "4": "保健肉丁" };
+    const petName  = { "cat": "貓咪", "dog": "狗狗", "both": "都有" };
+    const reelsOnly = regs.filter(r => r.type === "reels");
+    const headers = ["編號", "組別", "姓名", "團購名稱", "Instagram", "我養的是", "公關品方案", "聯絡電話", "收件地址", "登記時間"];
+    const rows = reelsOnly.map((r, i) => [
+      i + 1,
+      r.team + " 組",
+      r.name,
+      r.groupName,
+      "@" + r.ig,
+      r.petType ? (petName[r.petType] || "") : "",
+      r.plan ? ("方案" + r.plan + "：" + (planName[r.plan] || "")) : "",
+      r.phone || "",
+      r.address || "",
+      new Date(r.ts).toLocaleString("zh-TW"),
+    ]);
+    const csv = [headers, ...rows].map(row =>
+      row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")
+    ).join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `毛孩食務所_Reels創作者名單_${new Date().toLocaleDateString("zh-TW").replace(/\//g, "-")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   useEffect(() => {
     const q = query(collection(db, "maohao_regs"), orderBy("ts", "asc"));
     const unsub = onSnapshot(q, (snapshot) => {
@@ -543,6 +572,25 @@ export default function App() {
                       <line x1="12" y1="15" x2="12" y2="3"/>
                     </svg>
                     匯出 Excel 名單
+                  </button>
+                )}
+
+                {/* Reels only export button */}
+                {exportUnlocked && (
+                  <button onClick={exportReels} style={{
+                    width: "100%", padding: "12px", marginBottom: 16,
+                    borderRadius: 12, border: `1.5px solid #A890F0`,
+                    background: "rgba(168,144,240,0.08)",
+                    color: "#A890F0", fontFamily: font, fontSize: 12, fontWeight: 900,
+                    letterSpacing: "0.06em", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    只匯出 Reels 創作者名單
                   </button>
                 )}
 
