@@ -195,6 +195,11 @@ export default function App() {
   const [filter, setFilter] = useState("all");
   const [tab, setTab] = useState("register");
   const [form, setForm] = useState({ type: "general", petType: "", plan: "", team: "", name: "", groupName: "", ig: "", phone: "", address: "" });
+  const [videoIg, setVideoIg] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
+  const [videoSubmitting, setVideoSubmitting] = useState(false);
+  const [videoSuccess, setVideoSuccess] = useState(false);
+  const [videoError, setVideoError] = useState("");
   const [planModal, setPlanModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -205,7 +210,7 @@ export default function App() {
 
   const exportExcel = () => {
     // Build CSV with BOM for Excel compatibility
-    const headers = ["編號", "類型", "組別", "姓名", "團購名稱", "Instagram", "我養的是", "公關品方案", "聯絡電話", "收件地址", "登記時間"];
+    const headers = ["編號", "類型", "組別", "姓名", "團購名稱", "Instagram", "我養的是", "公關品方案", "聯絡電話", "收件地址", "Reels影片連結", "登記時間"];
     const planName = { "1": "From Halla 肉泥", "2": "漢方潔牙棒", "3": "RESPET 口腔系列", "4": "保健肉丁" };
     const petName  = { "cat": "貓咪", "dog": "狗狗", "both": "都有" };
     const rows = regs.map((r, i) => [
@@ -219,6 +224,7 @@ export default function App() {
       r.plan ? ("方案" + r.plan + "：" + (planName[r.plan] || "")) : "",
       r.phone || "",
       r.address || "",
+      r.reelUrl || "",
       new Date(r.ts).toLocaleString("zh-TW"),
     ]);
     const csv = [headers, ...rows].map(row =>
@@ -237,7 +243,7 @@ export default function App() {
     const planName = { "1": "From Halla 肉泥", "2": "漢方潔牙棒", "3": "RESPET 口腔系列", "4": "保健肉丁" };
     const petName  = { "cat": "貓咪", "dog": "狗狗", "both": "都有" };
     const reelsOnly = regs.filter(r => r.type === "reels");
-    const headers = ["編號", "組別", "姓名", "團購名稱", "Instagram", "我養的是", "公關品方案", "聯絡電話", "收件地址", "登記時間"];
+    const headers = ["編號", "組別", "姓名", "團購名稱", "Instagram", "我養的是", "公關品方案", "聯絡電話", "收件地址", "Reels影片連結", "登記時間"];
     const rows = reelsOnly.map((r, i) => [
       i + 1,
       r.team + " 組",
@@ -248,6 +254,7 @@ export default function App() {
       r.plan ? ("方案" + r.plan + "：" + (planName[r.plan] || "")) : "",
       r.phone || "",
       r.address || "",
+      r.reelUrl || "",
       new Date(r.ts).toLocaleString("zh-TW"),
     ]);
     const csv = [headers, ...rows].map(row =>
@@ -271,6 +278,36 @@ export default function App() {
     }, () => setLoading(false));
     return () => unsub();
   }, []);
+
+  const submitVideo = async () => {
+    if (!videoIg.trim() || !videoUrl.trim()) {
+      setVideoError("請填寫 IG 帳號和影片連結"); return;
+    }
+    if (!videoUrl.startsWith("http")) {
+      setVideoError("請貼上完整的影片連結（以 http 開頭）"); return;
+    }
+    setVideoError(""); setVideoSubmitting(true);
+    try {
+      const cleanIg = videoIg.trim().replace(/^@/, "").toLowerCase();
+      const q = query(collection(db, "maohao_regs"), orderBy("ts", "asc"));
+      const snapshot = await new Promise((resolve) => {
+        const unsub = onSnapshot(q, (snap) => { unsub(); resolve(snap); });
+      });
+      const match = snapshot.docs.find(doc => {
+        const data = doc.data();
+        return data.ig && data.ig.toLowerCase() === cleanIg && data.type === "reels";
+      });
+      if (!match) {
+        setVideoError("找不到這個 IG 帳號的 Reels 創作者登記資料"); 
+        setVideoSubmitting(false); return;
+      }
+      const { updateDoc, doc: firestoreDoc } = await import("firebase/firestore");
+      await updateDoc(firestoreDoc(db, "maohao_regs", match.id), { reelUrl: videoUrl.trim() });
+      setVideoIg(""); setVideoUrl("");
+      setVideoSuccess(true); setTimeout(() => setVideoSuccess(false), 4000);
+    } catch { setVideoError("更新失敗，請再試一次"); }
+    finally { setVideoSubmitting(false); }
+  };
 
   const handleSubmit = async () => {
     if (!form.team || !form.name.trim() || !form.groupName.trim() || !form.ig.trim()) {
@@ -379,7 +416,7 @@ export default function App() {
 
       {/* Tabs */}
       <div style={{ background: C.bgDeep, display: "flex", borderBottom: `1px solid ${C.border}` }}>
-        {[{ val: "register", label: "登記" }, { val: "stats", label: "即時統計" }].map(({ val, label }) => (
+        {[{ val: "register", label: "登記" }, { val: "video", label: "補填影片" }, { val: "stats", label: "即時統計" }].map(({ val, label }) => (
           <button key={val} onClick={() => setTab(val)} style={{
             flex: 1, padding: "13px 0", background: "transparent", border: "none",
             borderBottom: tab === val ? `3px solid ${C.lime}` : "3px solid transparent",
@@ -517,6 +554,58 @@ export default function App() {
                   <span style={{ fontSize: 10, color: C.mutedDim }}>{note}</span>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── VIDEO ── */}
+        {tab === "video" && (
+          <div>
+            <div style={{ background: C.bgCard, borderRadius: 18, padding: "22px 18px", border: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: 18, fontWeight: 900, color: C.lime, marginBottom: 6 }}>補填 Reels 影片連結</div>
+              <div style={{ fontSize: 12, color: C.muted, fontWeight: 700, marginBottom: 22, lineHeight: 1.6 }}>
+                拍完影片後回來填寫，廠商會直接點連結審核！
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <label style={labelSt}>你的 Instagram 帳號</label>
+                <input style={inputSt} placeholder="@username" value={videoIg}
+                  onChange={e => { setVideoIg(e.target.value); setVideoError(""); }} />
+              </div>
+
+              <div style={{ marginBottom: 24 }}>
+                <label style={labelSt}>Reels 影片連結</label>
+                <input style={inputSt} placeholder="https://www.instagram.com/reel/..." value={videoUrl}
+                  onChange={e => { setVideoUrl(e.target.value); setVideoError(""); }} />
+              </div>
+
+              {videoError && (
+                <div style={{ marginBottom: 14, padding: "10px 14px", background: "rgba(255,100,100,0.1)", border: "1px solid rgba(255,100,100,0.3)", borderRadius: 10, fontSize: 12, color: "#ffaaaa", fontWeight: 700 }}>{videoError}</div>
+              )}
+
+              <button onClick={submitVideo} disabled={videoSubmitting} style={{
+                width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
+                background: videoSubmitting ? C.mutedDim : C.lime,
+                color: C.bgDeep, fontFamily: font, fontSize: 14, fontWeight: 900,
+                letterSpacing: "0.08em", cursor: videoSubmitting ? "not-allowed" : "pointer",
+              }}>
+                {videoSubmitting ? "更新中…" : "確認送出"}
+              </button>
+
+              {videoSuccess && (
+                <div style={{ marginTop: 12, padding: "11px 14px", background: "rgba(216,243,130,0.08)", border: `1px solid ${C.lime}`, borderRadius: 10, fontSize: 13, color: C.lime, fontWeight: 800, textAlign: "center" }}>
+                  影片連結已更新！
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop: 16, background: C.bgCard, borderRadius: 14, padding: "16px 18px", border: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, letterSpacing: "0.14em", marginBottom: 12 }}>注意事項</div>
+              <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.8, fontWeight: 600 }}>
+                <div>▸ 請確認 IG 帳號與登記時一致</div>
+                <div>▸ 影片需設為公開才能讓廠商審核</div>
+                <div>▸ 連結格式：https://www.instagram.com/reel/...</div>
+              </div>
             </div>
           </div>
         )}
